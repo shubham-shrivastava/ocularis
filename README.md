@@ -14,6 +14,8 @@ curl -X POST http://localhost:8000/run \
 
 The agent opens a browser, searches, extracts products using an LLM, compares them, picks the best match, and returns a structured answer with links, prices, and ratings.
 
+![Ocularis Dashboard](assets/ui.png)
+
 ---
 
 ## What it does
