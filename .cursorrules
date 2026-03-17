@@ -1,0 +1,74 @@
+# Ocularis — Cursor Rules
+
+## Python Environment
+- uv only. No pip, no conda, no venv directly. Lockfile (uv.lock) must be committed.
+- All scripts run via `uv run <command>`. Never invoke python directly.
+- Python 3.11+. Use `from __future__ import annotations` in every module.
+
+## Architecture Invariants
+- Every agent run owns a dedicated RunSession with its own BrowserManager and Supervisor.
+  Never store per-run state on app-global objects or module-level singletons.
+- Every step must produce a StepTrace. No exceptions, no silent skips.
+- The orchestration loop in RunSession.run_loop() is the only place where BrowserManager,
+  Supervisor, ModelClient, Memory, and GoalEvaluator are wired together.
+
+## Trace Contract
+- AgentState carries screenshot_b64 (for model API) and screenshot_bytes (for SSIM).
+  Never pass raw bytes across the API boundary.
+- API and WebSocket responses use wire types only: AgentStateWire, StepTraceWire.
+  Screenshot URLs point to GET /runs/{id}/steps/{n}/screenshot?phase=pre|post.
+- Ephemeral runs: screenshot_url is None in AgentStateWire. Screenshot endpoint
+  returns 404 {"error": "ephemeral_run"}.
+
+## Security
+- Domain allowlist is enforced at BrowserContext level (context.route + context.on("page")).
+  Never use page.route() for security policy — it misses popups and new tabs.
+- Password field redaction happens in BrowserManager.get_state() before the screenshot
+  reaches the model or storage.
+- CDP connections must bind to 127.0.0.1 only. Enforce in SecuritySettings.cdp_host.
+- confirm_patterns cause the run to transition to waiting_for_human before executing
+  the action. The supervisor checks this in pre_action_check().
+
+## Run Status State Machine
+- Valid transitions only:
+    queued -> running
+    running -> paused | waiting_for_human | completed | max_steps_exceeded | failed
+    paused -> running | failed
+    waiting_for_human -> running | failed
+- max_steps_exceeded is NOT the same as completed. Goal was not achieved.
+
+## Error Handling
+- All exceptions must be caught with try/except and logged via loguru with context.
+- No silent swallows. Every except block must call logger.exception() or logger.error().
+- Fallbacks: model parse failure -> safe default action (wait). Goal evaluation failure -> uncertain.
+
+## Model Client Interface
+- ModelClientProtocol defines predict(), critique(), evaluate_goal(). All three must be
+  implemented by every concrete client (APIModelClient, MockModelClient).
+- Use MockModelClient in all tests. Never require a running model server for tests.
+
+## Memory Interface
+- MemoryProtocol defines recall() and store(). NullMemory is the Slice 1 default.
+- EpisodicMemory stores text-only summaries (no raw screenshots) as embeddings.
+- Ephemeral runs skip store() entirely. recall() still works from past non-ephemeral data.
+
+## Database
+- Repository is the only layer that touches SQLAlchemy models. No raw SQL elsewhere.
+- pgvector cosine search in Repository.find_similar_steps().
+- Alembic for production migrations. create_tables() is dev/test convenience only.
+
+## Logging
+- All log entries must include run_id and step_number when inside a run loop.
+- Use logger.bind(category="thought") for model reasoning, logger.bind(category="action")
+  for browser actions.
+- JSON format in production. Structured fields, not f-strings in log messages.
+
+## Testing
+- Tests must not require a running browser, database, or model server.
+- Use MockModelClient for all model calls in tests.
+- Use pytest-asyncio with asyncio_mode = "auto".
+- Run tests: `uv run pytest`
+
+## Naming
+- Files: snake_case. Classes: PascalCase. Constants: UPPER_SNAKE.
+- Pydantic models: use model_validate(), model_dump_json(). Never dict() directly.

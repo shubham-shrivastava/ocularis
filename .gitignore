@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+*.egg
+
+# uv
+.python-version
+
+# IDE
+.vscode/
+.idea/
+.cursor/plans/
+*.swp
+*.swo
+.DS_Store
+
+# Environment
+.env
+.env.local
+
+# Logs
+logs/
+*.log
+*.jsonl
+
+# Traces (screenshots stored per-run)
+traces/
+
+# Database
+*.db
+*.sqlite3
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Next.js dashboard
+web/dashboard/.next/
+web/dashboard/node_modules/
+web/dashboard/out/
+
+# Misc
+*.bak
+*.tmp

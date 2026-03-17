@@ -1,0 +1,74 @@
+browser:
+  headless: false
+  viewport_width: 1280
+  viewport_height: 800
+  screenshot_quality: 75
+  timeout_ms: 30000
+
+model:
+  base_url: "https://openrouter.ai/api/v1"
+  api_key: ""               # auto-resolved from OPENROUTER_API_KEY env var
+  model_name: "bytedance/ui-tars-1.5-7b"
+  timeout_s: 120
+  max_tokens: 1024
+
+text_model:
+  base_url: "https://openrouter.ai/api/v1"
+  api_key: ""               # auto-resolved from OPENROUTER_API_KEY env var
+  model_name: "openai/gpt-4o-mini"
+  timeout_s: 60
+  max_tokens: 1200
+
+supervisor:
+  stuck_threshold: 3        # how many identical hashes = stuck
+  history_size: 5           # rolling window of hashes/screenshots
+  ssim_similarity_floor: 0.98  # SSIM score >= this means "no change"
+  max_retries: 10           # before circuit breaker fires
+  recovery_order:
+    - "SCROLL_DOWN"
+    - "REFRESH_PAGE"
+    - "GO_BACK"
+    - "CLICK_OFFSET"
+    - "escalate"
+
+security:
+  allowed_domains: []       # empty = allow all; list domains to restrict e.g. ["example.com"]
+  confirm_patterns: []      # URL patterns requiring HITL approval e.g. ["/checkout", "/delete"]
+  block_password_fields: true
+  cdp_host: "127.0.0.1"   # CDP must bind to localhost only
+  cdp_port: 9222
+
+db:
+  url: "postgresql+asyncpg://ocularis:ocularis@localhost:5432/ocularis"
+  pool_size: 10
+  max_overflow: 20
+
+memory:
+  enabled: false            # set true in Slice 2
+  embedding_model: "text-embedding-3-small"
+  top_k: 5
+  similarity_threshold: 0.75
+
+goal_evaluator:
+  confidence_threshold: 0.8  # min confidence to accept "achieved" verdict
+
+planner:
+  enabled: true
+  base_url: "https://api.openai.com/v1"
+  api_key: ""               # auto-resolved from OPENAI_API_KEY env var
+  model_name: "gpt-4o-mini"
+  max_sub_steps: 8
+
+context_aware:
+  enabled: true
+  max_candidates: 12
+  max_main_text_chars: 15000
+
+logging:
+  level: "INFO"
+  json_format: true
+  file: "logs/ocularis.jsonl"
+
+traces:
+  dir: "traces"             # where step screenshots are stored (subdir per run_id)
+  ttl_seconds: 604800       # 7 days
